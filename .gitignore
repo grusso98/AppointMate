@@ -1,0 +1,20 @@
+appointmate/
+
+# Environment variables
+.env
+
+# Python cache and virtual environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+*.venv/
+env/
+*.env/
+
+# Database file
+appointments.db
+
+# Other common ignores
+.DS_Store
+*.log
