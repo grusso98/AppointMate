@@ -120,5 +120,22 @@ def add_appointment(client_name: str, appointment_dt: datetime, client_email: st
         conn.close()
         return False
 
+def list_appointments(client_name: str):
+    """
+    Performs a query to retrieve a client's appointments.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    # Query appointments that *start* within the range
+    cursor.execute("""
+        SELECT client_name, appointment_datetime 
+        FROM appointments
+        WHERE client_name = ?
+        """, [client_name])
+    booked_slots = {row['appointment_datetime'] for row in cursor.fetchall()}
+    conn.close()
+    print(booked_slots)
+    return booked_slots
+
 # Initialize the database when this module is loaded
 initialize_database()
