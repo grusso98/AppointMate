@@ -1,0 +1,34 @@
+{
+    "professional_name": "Dr. Demo",
+    "specialty": "General Practice",
+    "location": "123 Fake St, Exampletown",
+    "contact_info": "123-456-7890 (for non-booking info)",
+    "standard_duration_minutes": 60,
+    "services": [
+      {
+        "name": "Initial Consultation",
+        "price": "€100",
+        "duration_minutes": 60,
+        "description": "First visit including full assessment and treatment plan discussion."
+      },
+      {
+        "name": "Follow-up Visit",
+        "price": "€70",
+        "duration_minutes": 30,
+        "description": "Standard check-up on ongoing conditions or treatment adjustments."
+      },
+      {
+        "name": "Prescription Renewal",
+        "price": "€30",
+        "duration_minutes": 15,
+        "description": "Quick visit for existing patients needing prescription refills (requires prior consultation)."
+      },
+      {
+          "name": "Minor Procedure",
+          "price": "Variable (Consult Required)",
+          "duration_minutes": null,
+          "description": "Simple procedures like mole removal, etc. Price determined after consultation."
+      }
+    ],
+    "payment_info": "Payment due at time of service. Accepts cash and major credit cards."
+  }
