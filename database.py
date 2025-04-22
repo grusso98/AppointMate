@@ -134,8 +134,107 @@ def list_appointments(client_name: str):
         """, [client_name])
     booked_slots = {row['appointment_datetime'] for row in cursor.fetchall()}
     conn.close()
-    print(booked_slots)
     return booked_slots
 
-# Initialize the database when this module is loaded
+def update_appointment_in_db(client_name: str, old_datetime_iso: str, new_datetime_iso: str) -> bool:
+    """
+    Updates an existing appointment to a new datetime in the database.
+
+    Checks:
+    1. If an appointment exists for the client at the old datetime.
+    2. If the new datetime slot is already booked by ANYONE.
+
+    Args:
+        client_name: The name of the client whose appointment is being changed.
+        old_datetime_iso: The ISO timestamp string of the current appointment.
+        new_datetime_iso: The ISO timestamp string for the desired new appointment time.
+
+    Returns:
+        True if the update was successful, False otherwise.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    updated = False
+    print(f"DB: Attempting to update appointment for '{client_name}' from '{old_datetime_iso}' to '{new_datetime_iso}'")
+
+    try:
+        # 1. Check if the *new* slot is already taken (by anyone)
+        cursor.execute("SELECT id FROM appointments WHERE appointment_datetime = ?", (new_datetime_iso,))
+        existing_at_new_time = cursor.fetchone()
+        if existing_at_new_time:
+            print(f"DB Error: Cannot update. The new slot {new_datetime_iso} is already booked.")
+            return False # New slot is already booked
+
+        # 2. Find the original appointment ID for the specific client and time
+        cursor.execute("""
+            SELECT id FROM appointments
+            WHERE client_name = ? AND appointment_datetime = ?
+            """, (client_name, old_datetime_iso))
+        original_appointment = cursor.fetchone()
+
+        if original_appointment:
+            original_id = original_appointment['id']
+            print(f"DB: Found original appointment ID: {original_id}. Proceeding with update.")
+            # 3. Perform the update
+            cursor.execute("""
+                UPDATE appointments
+                SET appointment_datetime = ?
+                WHERE id = ?
+            """, (new_datetime_iso, original_id))
+            conn.commit()
+
+            # Verify update (optional but good)
+            if cursor.rowcount > 0:
+                print(f"DB: Successfully updated appointment ID {original_id} to {new_datetime_iso}")
+                updated = True
+            else:
+                 print(f"DB Warning: Update command affected 0 rows for ID {original_id}.") # Should not happen if found previously
+
+        else:
+            print(f"DB Error: Original appointment for '{client_name}' at '{old_datetime_iso}' not found.")
+            updated = False
+
+    except sqlite3.Error as e:
+        print(f"DB Error during update process: {e}")
+        conn.rollback() # Rollback changes on error
+        updated = False
+    except Exception as e:
+        print(f"General Error during update process: {e}")
+        conn.rollback()
+        updated = False
+    finally:
+        conn.close()
+
+    return updated
+
+
+def is_slot_within_working_hours(dt_obj: datetime) -> bool:
+    """Checks if a datetime object falls within defined working hours."""
+    day_of_week = dt_obj.weekday()
+    slot_time = dt_obj.time()
+
+    if day_of_week not in WORKING_HOURS:
+        return False # Not a working day
+
+    start_time, end_time = WORKING_HOURS[day_of_week]
+    # Ensure the slot *starts* within hours and doesn't overlap closing time
+    # Assumes APPOINTMENT_DURATION_MINUTES is defined globally or passed
+    slot_duration = timedelta(minutes=APPOINTMENT_DURATION_MINUTES)
+    slot_end_time = (dt_obj + slot_duration).time()
+
+    # Check if start time is within range and end time does not exceed end_time
+    # Handle edge case where end_time is midnight (00:00) -> compare as 24:00
+    effective_end_time = time(23, 59, 59, 999999) if end_time == time(0, 0) else end_time
+
+    return start_time <= slot_time and slot_end_time <= effective_end_time
+
+def is_slot_already_booked(dt_iso: str) -> bool:
+    """Checks if a specific ISO datetime string is already booked."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM appointments WHERE appointment_datetime = ?", (dt_iso,))
+    result = cursor.fetchone()
+    conn.close()
+    return result is not None
+
 initialize_database()
