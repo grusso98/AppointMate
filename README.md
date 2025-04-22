@@ -1,4 +1,4 @@
-# AppointMate: Appointment Agent Demo (Using LangChain)
+# AppointMate: Appointment Agent App
 
 A conversational AI agent built with LangChain that allows users to book appointments with a professional via Telegram. The agent can check availability based on a schedule stored in an SQLite database and confirm bookings, optionally sending email notifications.
 
