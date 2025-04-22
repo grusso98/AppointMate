@@ -1,7 +1,6 @@
-# database.py
-import sqlite3
-from datetime import datetime, timedelta, time
 import os
+import sqlite3
+from datetime import datetime, time, timedelta
 
 DATABASE_FILE = "appointments.db"
 APPOINTMENT_DURATION_MINUTES = int(os.getenv("APPOINTMENT_DURATION_MINUTES", 60))

@@ -1,15 +1,16 @@
-import os
 import logging
-from dotenv import load_dotenv
+import os
 
 import telegram
+from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (Application, CommandHandler, ContextTypes,
+                          MessageHandler, filters)
 
+from agent_setup import create_agent_executor, create_memory
+from database import initialize_database  # Ensure DB is ready
 # Import project components
 from llm_setup import get_llm
-from agent_setup import create_agent_executor, create_memory
-from database import initialize_database # Ensure DB is ready
 
 # Load environment variables from .env file
 load_dotenv()

@@ -1,17 +1,19 @@
 import os
-from dotenv import load_dotenv
-from langchain.tools import tool
-import dateparser # Using dateparser for flexible date input
-from datetime import datetime, timedelta, date
 import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
+from datetime import date, datetime, timedelta
 from email import encoders
-from ics import Calendar, Event, Attendee
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+import dateparser  # Using dateparser for flexible date input
+from dotenv import load_dotenv
+from ics import Attendee, Calendar, Event
+from langchain.tools import tool
 
 # Import database functions
-from database import find_available_slots, add_appointment, APPOINTMENT_DURATION_MINUTES
+from database import (APPOINTMENT_DURATION_MINUTES, add_appointment,
+                      find_available_slots)
 
 load_dotenv()
 

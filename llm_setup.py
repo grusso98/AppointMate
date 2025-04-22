@@ -1,7 +1,8 @@
 import os
-from langchain_openai import ChatOpenAI
-from langchain_community.chat_models import ChatOllama
+
 from dotenv import load_dotenv
+from langchain_community.chat_models import ChatOllama
+from langchain_openai import ChatOpenAI
 
 load_dotenv() # Load variables from .env file
 

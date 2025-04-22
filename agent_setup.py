@@ -1,13 +1,15 @@
-from langchain.agents import AgentExecutor, create_openai_tools_agent # Using OpenAI Tools agent as example
-from langchain.agents import create_react_agent # Alternative for Ollama/other models
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+import os
+
+from langchain.agents import \
+    create_react_agent  # Alternative for Ollama/other models
+from langchain.agents import (  # Using OpenAI Tools agent as example
+    AgentExecutor, create_openai_tools_agent)
 from langchain.memory import ConversationBufferMemory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # Import LLM and Tools
 from llm_setup import get_llm
 from tools import tools  # The list of exposed tools
-import os
-
 
 # Define the prompt template - this is crucial for agent behavior
 # Adjust this prompt based on the agent type and desired personality/instructions
