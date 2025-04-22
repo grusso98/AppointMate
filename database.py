@@ -33,7 +33,8 @@ def initialize_database():
             client_name TEXT NOT NULL,
             appointment_datetime TEXT NOT NULL UNIQUE, -- ISO format YYYY-MM-DDTHH:MM:SS
             duration_minutes INTEGER NOT NULL,
-            booked_at TEXT NOT NULL
+            booked_at TEXT NOT NULL,
+            email TEXT
         )
     """)
     conn.commit()
@@ -85,7 +86,7 @@ def find_available_slots(target_date: datetime) -> list[str]:
     return available_slots
 
 
-def add_appointment(client_name: str, appointment_dt: datetime) -> bool:
+def add_appointment(client_name: str, appointment_dt: datetime, client_email: str) -> bool:
     """Adds a new appointment to the database after checking for conflicts."""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -102,9 +103,9 @@ def add_appointment(client_name: str, appointment_dt: datetime) -> bool:
             return False # Slot is already booked
 
         cursor.execute("""
-            INSERT INTO appointments (client_name, appointment_datetime, duration_minutes, booked_at)
-            VALUES (?, ?, ?, ?)
-        """, (client_name, appointment_iso, duration, booked_at_iso))
+            INSERT INTO appointments (client_name, appointment_datetime, duration_minutes, booked_at, email)
+            VALUES (?, ?, ?, ?, ?)
+        """, (client_name, appointment_iso, duration, booked_at_iso, client_email))
         conn.commit()
         conn.close()
         print(f"Appointment added for {client_name} at {appointment_iso}")
