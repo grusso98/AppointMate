@@ -14,7 +14,8 @@ from langchain.tools import tool
 
 # Import database functions
 from database import (APPOINTMENT_DURATION_MINUTES, add_appointment,
-                      find_available_slots, list_appointments)
+                      find_available_slots, list_appointments,update_appointment_in_db,
+                        is_slot_within_working_hours, is_slot_already_booked)
 
 load_dotenv()
 
@@ -156,7 +157,54 @@ def get_professional_info() -> str:
     except Exception as e:
         print(f"Error reading professional_info.json: {e}")
         return "Sorry, I encountered an error while retrieving service information."
-    
+
+@tool
+def edit_appointment(client_name: str, current_datetime_str: str, new_datetime_str: str) -> str:
+    """
+    Changes the date or time of an existing appointment for a client.
+    **Requires THREE arguments:**
+    1. client_name: The name of the client whose appointment is being changed.
+    2. current_datetime_str: The CURRENT date and time of the appointment being changed (MUST be in 'YYYY-MM-DD HH:MM' format).
+    3. new_datetime_str: The NEW desired date and time for the appointment (MUST be in 'YYYY-MM-DD HH:MM' format).
+    Checks if the new slot is available before attempting the update.
+    **Do NOT call this tool unless you have gathered ALL THREE arguments from the user.**
+    """
+    print(f"Tool: Attempting to edit appointment for '{client_name}' from '{current_datetime_str}' to '{new_datetime_str}'")
+
+    if not client_name or not isinstance(client_name, str) or client_name.strip() == "":
+         return "Error: Client name is required to edit an appointment."
+    if not current_datetime_str or not new_datetime_str:
+         return "Error: Both the current and new appointment date/time are required."
+
+    try:
+        dt_format = '%Y-%m-%d %H:%M'
+        old_dt_obj = datetime.strptime(current_datetime_str.strip(), dt_format)
+        new_dt_obj = datetime.strptime(new_datetime_str.strip(), dt_format)
+
+        old_dt_iso = old_dt_obj.isoformat()
+        new_dt_iso = new_dt_obj.isoformat()
+
+        if new_dt_obj < datetime.now():
+            return f"Error: Cannot reschedule appointment to the past ({new_datetime_str}). Please choose a future time."
+
+    except ValueError:
+        return f"Error: Invalid datetime format. Please use 'YYYY-MM-DD HH:MM' format for both current and new times."
+
+    # --- Check Availability and Validity of NEW Slot ---
+    if not is_slot_within_working_hours(new_dt_obj):
+        return f"Error: The requested new time ({new_datetime_str}) is outside of working hours."
+    if is_slot_already_booked(new_dt_iso):
+         return f"Error: The requested new time slot ({new_datetime_str}) is already booked. Please choose a different time."
+    try:
+        update_successful = update_appointment_in_db(client_name.strip(), old_dt_iso, new_dt_iso)
+    except Exception as e:
+        print(f"Error calling database function update_appointment_in_db: {e}")
+        return f"Error: Could not reschedule appointment for {client_name.strip()} due to an internal error."
+    if update_successful:
+        return f"Success! Appointment for {client_name.strip()} rescheduled from {current_datetime_str} to {new_datetime_str}."
+    else:
+        return f"Error: Could not reschedule appointment for {client_name.strip()}. Please ensure the original appointment time ({current_datetime_str}) is correct for this name, and that the new slot is available."
+
 # Internal function for email sending, not exposed as a tool directly to the LLM
 # but called by book_appointment. This prevents LLM from trying to call email arbitrary things.
 def send_confirmation_email_internal(appointment_details: dict) -> str:
@@ -258,4 +306,8 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
         return err_msg
 
 # List of tools for the agent (only expose tools safe for LLM calls)
-tools = [check_availability, book_appointment, list_client_appointments, get_professional_info]
+tools = [check_availability, 
+         book_appointment, 
+         list_client_appointments, 
+         get_professional_info,
+         edit_appointment]
