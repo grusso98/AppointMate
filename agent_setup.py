@@ -1,67 +1,90 @@
 import os
 
-from langchain.agents import \
-    create_react_agent  # Alternative for Ollama/other models
-from langchain.agents import (  # Using OpenAI Tools agent as example
-    AgentExecutor, create_openai_tools_agent)
+from langchain.agents import (AgentExecutor, create_openai_tools_agent,
+                              create_react_agent)
 from langchain.memory import ConversationBufferMemory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-# Import LLM and Tools
 from llm_setup import get_llm
-from tools import tools  # The list of exposed tools
+from tools import \
+    tools  # The list of exposed tools (check_availability, book_appointment, list_appointments, get_professional_info)
 
-# Define the prompt template - this is crucial for agent behavior
-# Adjust this prompt based on the agent type and desired personality/instructions
-# For OpenAI Tools agent:
-prompt = ChatPromptTemplate.from_messages([
+# Define the prompt template for the OpenAI Tools Agent (remains the same)
+# This prompt structure is specific to how create_openai_tools_agent works.
+prompt_openai = ChatPromptTemplate.from_messages([
     ("system", """You are 'AppointmentBot', a friendly and efficient assistant for booking appointments.
-     Your goal is to help users find and book available time slots.
+     Your goal is to help users find and book available time slots or retrieve information.
 
      Follow these steps:
-     1. Greet the user and ask how you can help with booking.
-     2. If the user asks about services, prices, payment, location, or general info about Dr. Demo, use the 'get_professional_info' tool to provide details.
-     3. If a user asks to retrieve a booking instead of making a new reservation, ask for booking name and then use the 'list_client_appointments' tool passing the client name. Do not proceed with the following steps in this case unless stated by the user.
-     4. If the user asks for availability, use the 'check_availability' tool. You need a specific date query (like 'today', 'tomorrow', 'YYYY-MM-DD', 'next Monday'). Do NOT guess dates. If the user is vague (e.g. 'next week'), ask them to specify a day.
-        4.1. Present the available slots clearly to the user as returned by the tool.
-        4.2. If the user confirms they want to book a specific slot (e.g., 'Book 2025-04-28 14:00'), ask for their name if you don't have it already. You MUST have the client's name.
-        4.3. Also ask for the client's email to send them the booking confirmation.
-        4.4. Once you have the exact datetime string, the client's name and the email, use the 'book_appointment' tool.
-        4.5. Confirm the booking outcome (success or failure) to the user based on the tool's response.
-        4.6. Handle errors gracefully. If a tool fails, inform the user and suggest trying again or providing different information.
-        4.7. Do not make up information about availability or bookings. Only use the tools provided.
-     5. Keep track of the conversation history.
-     """),
+     1. Greet the user and ask how you can help.
+     2. If the user asks about services, prices, payment, location, or general info about Dr. Demo, use the 'get_professional_info' tool.
+     3. If a user asks to retrieve their existing booking(s), ask for their name (if you don't have it) and then use the 'list_appointments' tool, passing the client name. Do not proceed with booking steps unless they ask to make a *new* appointment afterwards.
+     4. If the user asks for availability for a *new* appointment, use the 'check_availability' tool. You need a specific date query (like 'today', 'tomorrow', 'YYYY-MM-DD', 'next Monday'). Do NOT guess dates. Clarify if vague (e.g., 'next week' -> 'Which day next week?').
+     5. Present the available slots clearly from the tool's output.
+     6. If the user confirms they want to book a specific slot:
+        a. Ask for their name if you don't already have it.
+        b. Ask for their email address (needed for confirmation).
+        c. Once you have the exact datetime string, the client's name, AND the client's email, use the 'book_appointment' tool. *Ensure you have all three pieces of information before calling the tool.*
+     7. Confirm the booking outcome (success or failure) to the user.
+     8. Handle errors gracefully. If a tool fails or returns an error, inform the user clearly.
+     9. Do not make up information. Rely *only* on the tools provided and these instructions.
+     10. Keep track of the conversation history to avoid asking for the same information repeatedly."""),
     MessagesPlaceholder(variable_name="chat_history"),
     ("user", "{input}"),
-    MessagesPlaceholder(variable_name="agent_scratchpad"), # Crucial placeholder for agent intermediate steps
+    # 'agent_scratchpad' for OpenAI tools agent stores intermediate steps like function calls/responses
+    MessagesPlaceholder(variable_name="agent_scratchpad"),
 ])
 
-# Agent Memory (one instance per conversation/chat_id)
+
+# Define the prompt template suitable for ReAct Agent
+# ReAct relies heavily on the LLM understanding the Thought/Action/Action Input/Observation cycle.
+# Often, using a pre-defined ReAct prompt structure is best. We can pull one from the LangChain Hub.
+# This prompt includes placeholders for tools, tool_names, input, and agent_scratchpad (for the T/A/AI/O steps)
+# If hub access is an issue, a custom string-based template following ReAct format would be the alternative.
+try:
+    from langchain import hub
+
+    # This prompt structure is designed to guide the LLM through the ReAct steps.
+    prompt_react = hub.pull("hwchase17/react-chat")
+except ImportError:
+    print("Warning: `langchain.hub` not available. ReAct agent might not function optimally without a tailored prompt.")
+    prompt_react = None 
+
 def create_memory():
     """Creates a new conversation memory buffer."""
-    return ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    return ConversationBufferMemory(memory_key="chat_history", return_messages=True, return_intermediate_steps=True) # return_intermediate_steps might be useful for ReAct debugging
 
-# Create the Agent (will be called per user session)
 def create_agent_executor(llm):
-    """Creates the LangChain agent executor instance."""
-    # Assuming OpenAI Tools agent for this example
-    # If using Ollama, you might prefer create_react_agent or another type
+    """Creates the LangChain agent executor instance based on MODEL_PROVIDER."""
+    agent = None
     if os.getenv("MODEL_PROVIDER") == "openai":
-        agent = create_openai_tools_agent(llm, tools, prompt)
-    else:
-        # For Ollama/other models, ReAct is often a good choice
-        # Note: ReAct prompt structure is different. You'd need to adapt the prompt above.
-        # from langchain.agents import create_react_agent
-        # react_prompt = ... # Define a ReAct compatible prompt
-        # agent = create_react_agent(llm, tools, react_prompt)
-        # Fallback to OpenAI tools agent structure for simplicity in demo,
-        # but acknowledge it might not be optimal for non-OpenAI models.
-        print("Warning: Using OpenAI Tools agent structure with non-OpenAI model. ReAct agent might be more suitable.")
-        agent = create_openai_tools_agent(llm, tools, prompt)
+        print("Creating OpenAI Tools Agent...")
+        # Create agent specifically for OpenAI function/tool calling
+        agent = create_openai_tools_agent(llm, tools, prompt_openai)
 
+    else: # Assume Ollama or other model requiring ReAct
+        print("Creating ReAct Agent for Ollama/other model...")
+        if prompt_react:
+            # Create a ReAct agent. It uses the LLM to determine the sequence of
+            # Thoughts, Actions (tool calls), and Observations.
+            # It relies heavily on the LLM's reasoning capabilities and the descriptions of the tools.
+            agent = create_react_agent(llm, tools, prompt_react)
+        else:
+            # Fallback or raise error if prompt couldn't be loaded
+            print("ERROR: ReAct prompt not available from Langchain Hub. Agent creation failed.")
+            # You might want to raise an exception here or implement a basic string prompt as a fallback
+            raise ValueError("Could not create ReAct agent because the prompt is unavailable.")
 
-    # Combine Agent + Tools + Memory
-    # verbose=True helps in debugging - shows agent thought process
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+    # Combine Agent + Tools + Memory into an Executor
+    # verbose=True is highly recommended for debugging ReAct agents to see the Thought process
+    print("Creating Agent Executor...")
+    agent_executor = AgentExecutor(
+        agent=agent,
+        tools=tools,
+        verbose=True, # Set to True to see Thoughts, Actions, Observations
+        handle_parsing_errors=True # Gracefully handle cases where the LLM output doesn't perfectly match the expected format
+    )
+    # Note: We are not explicitly passing memory here. It will be managed per-chat
+    # in the main.py `get_agent_for_chat` function by assigning agent_executor.memory.
+
     return agent_executor
