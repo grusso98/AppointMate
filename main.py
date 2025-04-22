@@ -137,9 +137,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Agent execution error for chat {chat_id}: {e}", exc_info=True)
         ai_response = "Sorry, I encountered an error processing your request. Please try rephrasing or use /start to begin again."
 
-    # Send the agent's response back to the user
-    await update.message.reply_text(ai_response)
-
 
 # --- Main Bot Execution ---
 
