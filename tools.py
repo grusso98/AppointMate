@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from ics import Calendar, Event
+from ics import Calendar, Event, Attendee
 
 # Import database functions
 from database import find_available_slots, add_appointment, APPOINTMENT_DURATION_MINUTES
@@ -59,7 +59,7 @@ def check_availability(date_query: str) -> str:
 
 
 @tool
-def book_appointment(datetime_str: str, client_name: str) -> str:
+def book_appointment(datetime_str: str, client_name: str, client_email: str) -> str:
     """
     Books an appointment for the client at the specified date and time.
     Requires the exact datetime string in 'YYYY-MM-DD HH:MM' format (as provided by check_availability)
@@ -80,7 +80,7 @@ def book_appointment(datetime_str: str, client_name: str) -> str:
         return f"Error: Invalid datetime format '{datetime_str}'. Please use 'YYYY-MM-DD HH:MM' format as shown in availability."
 
     # Attempt to add to database (includes conflict check)
-    success = add_appointment(client_name, appointment_dt)
+    success = add_appointment(client_name, appointment_dt, client_email)
 
     if success:
         # Prepare details for email (even if sending fails or is skipped)
@@ -88,7 +88,8 @@ def book_appointment(datetime_str: str, client_name: str) -> str:
             "client_name": client_name,
             "datetime": appointment_dt.isoformat(), # Use ISO for internal consistency
             "datetime_readable": appointment_dt.strftime('%A, %B %d, %Y at %I:%M %p'),
-            "duration": APPOINTMENT_DURATION_MINUTES
+            "duration": APPOINTMENT_DURATION_MINUTES,
+            "client_email": client_email
         }
         # Trigger email sending (can be done here or as a separate step by the agent)
         email_status = send_confirmation_email_internal(appointment_details)
@@ -115,6 +116,8 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
     datetime_iso = appointment_details.get("datetime")
     datetime_readable = appointment_details.get("datetime_readable", datetime_iso) # Fallback
     duration = appointment_details.get("duration", APPOINTMENT_DURATION_MINUTES)
+    client_email = appointment_details.get("client_email", "No email")
+    recipients = []
 
     if not datetime_iso:
         return "Error: Missing appointment datetime for email."
@@ -128,12 +131,16 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f"New Appointment Booking: {client_name} on {dt_start.strftime('%Y-%m-%d %H:%M')}"
         msg['From'] = SMTP_USER
-        msg['To'] = PROFESSIONAL_EMAIL
-        # msg['To'] = ", ".join([PROFESSIONAL_EMAIL, client_email]) # Also send to client? Add client_email param
+        recipients.append(PROFESSIONAL_EMAIL)
+        if client_email != "No email":
+            recipients.append(client_email)
+            msg['To'] = ", ".join(recipients)
+        else:
+            msg['To'] = PROFESSIONAL_EMAIL
 
         # --- Email Body ---
         body = f"""
-        Hi {PROFESSIONAL_NAME},
+        Hi,
 
         A new appointment has been booked via the booking agent:
 
@@ -144,7 +151,7 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
         This appointment has been added to the database. Please find the calendar invite attached (.ics file).
 
         Best regards,
-        Your Booking Bot
+        AppointMate.
         """
         msg.attach(MIMEText(body, 'plain'))
 
@@ -156,9 +163,10 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
         event.end = dt_end
         event.description = f"Appointment with {client_name} booked via automated agent."
         # event.location = "Optional: Add location"
-        # event.organizer = f"MAILTO:{SMTP_USER}" # Optional: Set organizer
-        # event.add('attendee', f'MAILTO:{PROFESSIONAL_EMAIL}') # Optional
-        # event.add('attendee', f'MAILTO:{client_email}') # Optional
+        professional_attendee = Attendee(f"mailto:{PROFESSIONAL_EMAIL}")
+        event.attendees.add(professional_attendee)
+        client_attendee = Attendee(f"mailto:{client_email}")
+        event.attendees.add(client_attendee)
         cal.events.add(event)
 
         # --- Attach ICS file ---
@@ -171,15 +179,16 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
         msg.attach(part)
 
 
-        # --- Send Email ---
+        # --- Send Email to Professional---
         print(f"Internal: Sending email to {PROFESSIONAL_EMAIL} via {SMTP_SERVER}:{SMTP_PORT}")
         with smtplib.SMTP(SMTP_SERVER, int(SMTP_PORT)) as server:
             server.ehlo() # Identify client to ESMTP server
             server.starttls() # Encrypt connection
             server.ehlo() # Re-identify client over encrypted connection
             server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, PROFESSIONAL_EMAIL, msg.as_string())
+            server.sendmail(from_addr=SMTP_USER, to_addrs=recipients, msg=msg.as_string()) if client_email != "No email" else server.sendmail(from_addr=SMTP_USER, to_addrs=PROFESSIONAL_EMAIL, msg=msg.as_string())
             print("Internal: Email sent successfully.")
+
         return f"Confirmation email sent to {PROFESSIONAL_EMAIL}."
 
     except smtplib.SMTPAuthenticationError:
