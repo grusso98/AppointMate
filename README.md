@@ -15,7 +15,7 @@ A conversational AI agent built with LangChain that allows users to book appoint
     * Prompts the user for their name if not already provided in the conversation.
     * Saves the confirmed appointment to the SQLite database, preventing double booking.
 * **Edit Appointments:**
-    * Allows the user to edit exisiting appointment, checkinf for available slots.
+    * Allows the user to edit exisiting appointment, checking for available slots.
 * **LLM Integration:** Supports using different Language Models:
     * OpenAI models (e.g., GPT-4o-mini) via API.
     * Local models via Ollama (e.g., Llama 3).
@@ -84,6 +84,9 @@ A conversational AI agent built with LangChain that allows users to book appoint
     * Make a copy of the `.env.example` file (if provided) or create a new file named `.env` in the project's root directory (`appointment_agent_demo/`).
     * **Add `.env` to your `.gitignore` file** to avoid committing secrets.
     * Edit the `.env` file and fill in the required values (see Configuration section below).
+
+6. **Add Professional Info in .json**
+    * Create a `professional_info.json` with the right information as shown in the example.
 
 ## Configuration (`.env` file)
 
