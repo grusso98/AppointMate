@@ -1,4 +1,3 @@
-# agent_setup.py
 from langchain.agents import AgentExecutor, create_openai_tools_agent # Using OpenAI Tools agent as example
 from langchain.agents import create_react_agent # Alternative for Ollama/other models
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
