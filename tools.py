@@ -13,7 +13,7 @@ from langchain.tools import tool
 
 # Import database functions
 from database import (APPOINTMENT_DURATION_MINUTES, add_appointment,
-                      find_available_slots)
+                      find_available_slots, list_appointments)
 
 load_dotenv()
 
@@ -101,6 +101,20 @@ def book_appointment(datetime_str: str, client_name: str, client_email: str) -> 
         # The add_appointment function already prints conflict/error messages
         return f"Error: Could not book appointment for {client_name} at {datetime_str}. The slot might have been taken, or another error occurred. Please try checking availability again."
 
+@tool
+def list_client_appointments(client_name: str):
+    """
+    Retrieves the current appointment a client has already booked. Requires the 
+    client name to perform the sql query.
+    """
+    print(f"Tool: Attempting to list appointment for '{client_name}'")
+    if not client_name or client_name.strip() == "":
+         return "Error: Client name is required to book an appointment."
+    success = list_appointments(client_name)
+    if success:
+        return f"Here are your booked appointments: \n{success.replace("*", "")}"
+    else: 
+        return f"Error: no booked appointments with the following name: {client_name}"
 
 # Internal function for email sending, not exposed as a tool directly to the LLM
 # but called by book_appointment. This prevents LLM from trying to call email arbitrary things.
@@ -203,4 +217,4 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
         return err_msg
 
 # List of tools for the agent (only expose tools safe for LLM calls)
-tools = [check_availability, book_appointment]
+tools = [check_availability, book_appointment, list_client_appointments]
