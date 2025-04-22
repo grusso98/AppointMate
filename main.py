@@ -2,6 +2,8 @@ import logging
 import os
 
 import telegram
+from telegram.constants import ParseMode
+from telegram.error import BadRequest
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (Application, CommandHandler, ContextTypes,
@@ -103,19 +105,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Received message from chat_id {chat_id}: {user_input}")
 
     try:
-        # Get or create the agent executor for this chat, linking memory
         agent_executor = get_agent_for_chat(context)
-
-        # Show typing indicator
         await context.bot.send_chat_action(chat_id=chat_id, action=telegram.constants.ChatAction.TYPING)
 
-        # Invoke the agent asynchronously ONLY with the 'input' key
-        # The agent's prompt should guide it to ask for the name if needed for booking.
         logger.debug(f"Invoking agent for chat {chat_id} with input: '{user_input}'")
         response = await agent_executor.ainvoke({"input": user_input})
-
         ai_response = response.get('output', "Sorry, I didn't get a valid response.")
-        logger.debug(f"Agent response for chat {chat_id}: '{ai_response}'")
+        logger.debug(f"Agent raw response for chat {chat_id}: '{ai_response}'")
+
+        try:
+            # Attempt to send the message using MarkdownV2 formatting
+            await update.message.reply_text(
+                text=ai_response,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+        except BadRequest as e:
+            # If Telegram rejects the Markdown (e.g., invalid syntax from LLM)
+            # send it as plain text instead.
+            if "can't parse entities" in str(e).lower():
+                logger.warning(f"MarkdownV2 parsing failed: {e}. Sending as plain text.")
+                await update.message.reply_text(text=ai_response) # Fallback
+            else:
+                # Re-raise other potential errors
+                logger.error(f"Telegram BadRequest error: {e}")
+                raise e # Or send a generic error message
 
     except RuntimeError as e: # Catch LLM initialization error
          logger.error(f"RuntimeError during agent execution for chat {chat_id}: {e}")
