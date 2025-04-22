@@ -7,15 +7,15 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-import dateparser  # Using dateparser for flexible date input
+import dateparser
 from dotenv import load_dotenv
 from ics import Attendee, Calendar, Event
 from langchain.tools import tool
 
-# Import database functions
 from database import (APPOINTMENT_DURATION_MINUTES, add_appointment,
-                      find_available_slots, list_appointments,update_appointment_in_db,
-                        is_slot_within_working_hours, is_slot_already_booked)
+                      find_available_slots, is_slot_already_booked,
+                      is_slot_within_working_hours, list_appointments,
+                      update_appointment_in_db)
 
 load_dotenv()
 
@@ -26,6 +26,13 @@ SMTP_PORT = os.getenv("SMTP_PORT")
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
+@tool
+def get_datetime():
+    """
+    Checks the current date and time, use it whenever it is useful to know what date is today, 
+    e.g to schedule appointments or to reschedule them and also at startup before handling the client's requests.
+    """
+    return str(datetime.today())
 
 @tool
 def check_availability(date_query: str) -> str:
@@ -310,4 +317,5 @@ tools = [check_availability,
          book_appointment, 
          list_client_appointments, 
          get_professional_info,
-         edit_appointment]
+         edit_appointment,
+         get_datetime]
