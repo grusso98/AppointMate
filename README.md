@@ -1,5 +1,5 @@
 # AppointMate: Appointment Agent App
-
+![AppointMate Logo](https://github.com/grusso98/AppointMate/imgs/appointmate_logo.png)
 A conversational AI agent built with LangChain that allows users to book appointments with a professional via Telegram. The agent can check availability based on a schedule stored in an SQLite database and confirm bookings, optionally sending email notifications.
 
 ## Functionalities
@@ -14,6 +14,8 @@ A conversational AI agent built with LangChain that allows users to book appoint
     * Guides the user to select a specific available slot.
     * Prompts the user for their name if not already provided in the conversation.
     * Saves the confirmed appointment to the SQLite database, preventing double booking.
+* **Edit Appointments:**
+    * Allows the user to edit exisiting appointment, checkinf for available slots.
 * **LLM Integration:** Supports using different Language Models:
     * OpenAI models (e.g., GPT-4o-mini) via API.
     * Local models via Ollama (e.g., Llama 3).
@@ -142,3 +144,10 @@ Send ```/help``` to see basic instructions.
 Check Availability: ```"Are there slots for tomorrow?", "Check availability next Monday", "Any appointments on 2025-07-20?"```
 
 Book Appointment: ```After seeing available slots like 2025-07-20 14:00, respond with "Book 2025-07-20 14:00". The bot will then ask for your name if needed.```
+
+## Author: 
+<div align="center">
+    <p>Gianmarco Russo</p>
+    <a href="https://www.linkedin.com/in/grusso98/" style="text-decoration:none;">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/640px-LinkedIn_logo_initials.png" width="2%" alt="" /></a>
+  </div> 
