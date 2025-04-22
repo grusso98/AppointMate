@@ -1,3 +1,4 @@
+import json
 import os
 import smtplib
 from datetime import date, datetime, timedelta
@@ -112,10 +113,50 @@ def list_client_appointments(client_name: str):
          return "Error: Client name is required to book an appointment."
     success = list_appointments(client_name)
     if success:
-        return f"Here are your booked appointments: \n{success.replace("*", "")}"
+        return f"Here are your booked appointments: \n{success}"
     else: 
         return f"Error: no booked appointments with the following name: {client_name}"
 
+@tool
+def get_professional_info() -> str:
+    """
+    Provides detailed information about the professional (Dr. Demo), including specialty,
+    contact details, services offered, prices, and payment information. Use this tool
+    when the user asks questions about services, costs, what Dr. Demo does,
+    or general practice information. Do not use for checking appointment availability.
+    """
+    print("Tool: Attempting to retrieve professional info.")
+    try:
+        with open("professional_info.json", 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Format the data into a readable string for the LLM/user
+        info_parts = [
+            f"--- Information about {data.get('professional_name', 'the professional')} ---",
+            f"Specialty: {data.get('specialty', 'N/A')}",
+            f"Location: {data.get('location', 'N/A')}",
+            f"Contact (non-booking): {data.get('contact_info', 'N/A')}",
+        ]
+        if 'services' in data and data['services']:
+            info_parts.append("\nServices Offered:")
+            for service in data['services']:
+                name = service.get('name', 'Unnamed Service')
+                price = f" - Price: {service.get('price', 'N/A')}"
+                duration = f" - Duration: approx. {service.get('duration_minutes', 'N/A')} min" if service.get('duration_minutes') else ""
+                desc = f" - Desc: {service.get('description', '')}" if service.get('description') else ""
+                info_parts.append(f"  - {name}\n    {price}{duration}\n    {desc}") # Indented formatting
+
+        info_parts.append(f"\nPayment Info: {data.get('payment_info', 'Please inquire.')}")
+        info_parts.append("\nNote: For exact appointment times, please use the availability checking tool.")
+
+        return "\n".join(info_parts)
+    except FileNotFoundError:
+        print("Error: professional_info.json not found.")
+        return "Sorry, I couldn't find the detailed service information file."
+    except Exception as e:
+        print(f"Error reading professional_info.json: {e}")
+        return "Sorry, I encountered an error while retrieving service information."
+    
 # Internal function for email sending, not exposed as a tool directly to the LLM
 # but called by book_appointment. This prevents LLM from trying to call email arbitrary things.
 def send_confirmation_email_internal(appointment_details: dict) -> str:
@@ -217,4 +258,4 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
         return err_msg
 
 # List of tools for the agent (only expose tools safe for LLM calls)
-tools = [check_availability, book_appointment, list_client_appointments]
+tools = [check_availability, book_appointment, list_client_appointments, get_professional_info]
