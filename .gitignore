@@ -3,6 +3,9 @@ appointmate/
 # Environment variables
 .env
 
+# nextdevelopments
+todo
+
 # Python cache and virtual environment
 __pycache__/
 *.py[cod]
