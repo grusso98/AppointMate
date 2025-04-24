@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 DATABASE_FILE = "appointments.db"
 APPOINTMENT_DURATION_MINUTES = int(os.getenv("APPOINTMENT_DURATION_MINUTES", 60))
@@ -256,5 +256,47 @@ def is_slot_already_booked(dt_iso: str) -> bool:
     result = cursor.fetchone()
     conn.close()
     return result is not None
+
+def get_appointments_for_date(target_date: date) -> list[dict]:
+    """
+    Fetches all appointments scheduled for a specific date, ordered by time.
+
+    Args:
+        target_date: The date (datetime.date object) to fetch appointments for.
+
+    Returns:
+        A list of dictionaries, where each dictionary represents an appointment
+        (e.g., {'client_name': '...', 'appointment_datetime': 'ISO_string', 'duration_minutes': ...}).
+        Returns an empty list if no appointments are found or an error occurs.
+    """
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    appointments = []
+    start_dt = datetime.combine(target_date, time.min) # Midnight start
+    end_dt = datetime.combine(target_date, time.max) # End of day
+
+    print(f"DB: Querying appointments for date: {target_date.isoformat()}")
+    try:
+        cursor.execute("""
+            SELECT client_name, appointment_datetime, duration_minutes, email
+            FROM appointments
+            WHERE appointment_datetime >= ? AND appointment_datetime <= ?
+            ORDER BY appointment_datetime ASC
+        """, (start_dt.isoformat(), end_dt.isoformat())) 
+
+        for row in cursor.fetchall():
+            appointments.append(dict(row))
+
+        print(f"DB: Found {len(appointments)} appointments for {target_date.isoformat()}.")
+
+    except sqlite3.Error as e:
+        print(f"DB Error in get_appointments_for_date for {target_date.isoformat()}: {e}")
+    except Exception as e:
+        print(f"General Error in get_appointments_for_date for {target_date.isoformat()}: {e}")
+    finally:
+        if conn:
+            conn.close()
+    return appointments
 
 initialize_database()
