@@ -13,9 +13,9 @@ from ics import Attendee, Calendar, Event
 from langchain.tools import tool
 
 from database import (APPOINTMENT_DURATION_MINUTES, add_appointment,
-                      find_available_slots, is_slot_already_booked,
-                      is_slot_within_working_hours, list_appointments,
-                      update_appointment_in_db)
+                      delete_appointment_from_db, find_available_slots,
+                      is_slot_already_booked, is_slot_within_working_hours,
+                      list_appointments, update_appointment_in_db)
 
 load_dotenv()
 
@@ -35,15 +35,43 @@ def get_datetime():
     return str(datetime.today())
 
 @tool
+def cancel_appointment(parsed_datetime: str, client_name: str):
+    """
+    Cancel an appoint previously boooked, use it whenever the user asks to cancel an appointment:
+    e.g 'I would like to cancel my appointment/booking'.
+    You need to collect the datetime of the booking and the client name before calling this tool.
+    The date and time needs to be provided to the tool in this format: YYYY-MM-DD HH:MM. If the user provides it
+    in a different format transform it in the above format before calling the tool.
+    """
+    print(f"Tool: Cancel Appointment for query: {parsed_datetime}")
+
+    try:
+        appointment_dt = datetime.strptime(parsed_datetime, '%Y-%m-%d %H:%M')
+        formatted_datetime = appointment_dt.strftime('%Y-%m-%d %H:%M')
+
+    except ValueError:
+        return f"Error: Invalid datetime format '{parsed_datetime}'. Please use 'YYYY-MM-DD HH:MM' format."
+
+    result = delete_appointment_from_db(formatted_datetime, client_name)
+    if result:
+        return "Appointment has been successfully deleted!"
+    return "There was an error in the appointment cancellation, please try again."
+
+@tool
 def check_availability(date_query: str) -> str:
     """
+    Use it only when you need to book a new appointment or to edit an exsisting one.
     Checks the professional's calendar for available appointment slots on a specific date
     or based on a natural language query like 'today', 'tomorrow', 'next Friday', or 'July 10th'.
     Do not use relative times like 'afternoon' or 'morning', ask the user for a specific date.
     Returns a list of available slots in 'YYYY-MM-DD HH:MM' format or a message indicating unavailability.
     """
     print(f"Tool: Checking availability for query: {date_query}")
-    parsed_date = dateparser.parse(date_query, settings={'PREFER_DATES_FROM': 'future', 'STRICT_PARSING': False})
+    parsed_date = dateparser.parse(date_query,
+                                   settings={
+                                       'PREFER_DATES_FROM': 'future',
+                                       'STRICT_PARSING': False
+                                   })
 
     if not parsed_date:
         return f"Sorry, I couldn't understand the date '{date_query}'. Please provide a specific date like 'tomorrow', 'next Monday', or 'YYYY-MM-DD'."
@@ -52,12 +80,12 @@ def check_availability(date_query: str) -> str:
     print(f"Tool: Parsed date query '{date_query}' to: {target_date}")
 
     # Ensure we don't check for dates too far in the past unless specified explicitly
-    if target_date < date.today() and parsed_date.strftime('%Y%m%d') == datetime.now().strftime('%Y%m%d'):
-         # If dateparser defaults to today for a time-only query, fine.
-         pass
+    if target_date < date.today() and parsed_date.strftime(
+            '%Y%m%d') == datetime.now().strftime('%Y%m%d'):
+        # If dateparser defaults to today for a time-only query, fine.
+        pass
     elif target_date < date.today():
-         return "Sorry, I can only check availability for today or future dates."
-
+        return "Sorry, I can only check availability for today or future dates."
 
     available_slots = find_available_slots(parsed_date)
 
@@ -78,7 +106,7 @@ def book_appointment(datetime_str: str, client_name: str, client_email: str) -> 
     """
     print(f"Tool: Attempting to book appointment for '{client_name}' at '{datetime_str}'")
     if not client_name or client_name.strip() == "":
-         return "Error: Client name is required to book an appointment."
+        return "Error: Client name is required to book an appointment."
     try:
         # Validate and parse the datetime string
         appointment_dt = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
@@ -118,11 +146,11 @@ def list_client_appointments(client_name: str):
     """
     print(f"Tool: Attempting to list appointment for '{client_name}'")
     if not client_name or client_name.strip() == "":
-         return "Error: Client name is required to book an appointment."
+        return "Error: Client name is required to book an appointment."
     success = list_appointments(client_name)
     if success:
         return f"Here are your booked appointments: \n{success}"
-    else: 
+    else:
         return f"Error: no booked appointments with the following name: {client_name}"
 
 @tool
@@ -179,9 +207,9 @@ def edit_appointment(client_name: str, current_datetime_str: str, new_datetime_s
     print(f"Tool: Attempting to edit appointment for '{client_name}' from '{current_datetime_str}' to '{new_datetime_str}'")
 
     if not client_name or not isinstance(client_name, str) or client_name.strip() == "":
-         return "Error: Client name is required to edit an appointment."
+        return "Error: Client name is required to edit an appointment."
     if not current_datetime_str or not new_datetime_str:
-         return "Error: Both the current and new appointment date/time are required."
+        return "Error: Both the current and new appointment date/time are required."
 
     try:
         dt_format = '%Y-%m-%d %H:%M'
@@ -201,7 +229,7 @@ def edit_appointment(client_name: str, current_datetime_str: str, new_datetime_s
     if not is_slot_within_working_hours(new_dt_obj):
         return f"Error: The requested new time ({new_datetime_str}) is outside of working hours."
     if is_slot_already_booked(new_dt_iso):
-         return f"Error: The requested new time slot ({new_datetime_str}) is already booked. Please choose a different time."
+        return f"Error: The requested new time slot ({new_datetime_str}) is already booked. Please choose a different time."
     try:
         update_successful = update_appointment_in_db(client_name.strip(), old_dt_iso, new_dt_iso)
     except Exception as e:
@@ -313,9 +341,10 @@ def send_confirmation_email_internal(appointment_details: dict) -> str:
         return err_msg
 
 # List of tools for the agent (only expose tools safe for LLM calls)
-tools = [check_availability, 
-         book_appointment, 
-         list_client_appointments, 
+tools = [check_availability,
+         book_appointment,
+         list_client_appointments,
          get_professional_info,
          edit_appointment,
-         get_datetime]
+         get_datetime,
+         cancel_appointment]
