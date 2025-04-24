@@ -188,7 +188,7 @@ def update_appointment_in_db(client_name: str, old_datetime_iso: str, new_dateti
                 print(f"DB: Successfully updated appointment ID {original_id} to {new_datetime_iso}")
                 updated = True
             else:
-                 print(f"DB Warning: Update command affected 0 rows for ID {original_id}.") # Should not happen if found previously
+                print(f"DB Warning: Update command affected 0 rows for ID {original_id}.") # Should not happen if found previously
 
         else:
             print(f"DB Error: Original appointment for '{client_name}' at '{old_datetime_iso}' not found.")
@@ -207,6 +207,26 @@ def update_appointment_in_db(client_name: str, old_datetime_iso: str, new_dateti
 
     return updated
 
+
+def delete_appointment_from_db(appointment_datetime: str, client_name: str):
+    """
+    Deletes an appointment based on its datetime.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "DELETE FROM appointments WHERE appointment_datetime = ? AND client_name = ?",
+            (appointment_datetime, client_name))
+        deleted = True
+    except sqlite3.Error as e:
+        print(f"DB Error during update process: {e}")
+        conn.rollback()  # Rollback changes on error
+        deleted = False
+    finally:
+        conn.close()
+
+    return deleted
 
 def is_slot_within_working_hours(dt_obj: datetime) -> bool:
     """Checks if a datetime object falls within defined working hours."""
