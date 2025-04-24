@@ -1,6 +1,7 @@
 # AppointMate: Appointment Agent App
 ![AppointMate Logo](https://github.com/grusso98/AppointMate/blob/main/imgs/appointmate_logo.png)
-A conversational AI agent built with LangChain that allows users to book appointments with a professional via Telegram. The agent can check availability based on a schedule stored in an SQLite database and confirm bookings, optionally sending email notifications.
+
+A conversational AI agent built with LangChain that allows users to book appointments with a professional via Telegram. The agent can check availability (for a fixed duration), book, list, and edit appointments using an SQLite database, provide information about the professional, and optionally send email notifications. It also includes a simple web-based admin panel for viewing the schedule.
 
 ## Functionalities
 
@@ -8,21 +9,23 @@ A conversational AI agent built with LangChain that allows users to book appoint
 * **Availability Checking:**
     * Understands natural language date queries (e.g., "today", "tomorrow", "next Friday", "July 10th") using `dateparser`.
     * Consults an SQLite database for existing appointments.
-    * Checks against predefined working hours.
+    * Checks against predefined working hours for a fixed appointment duration (see `.env` config).
     * Presents available time slots to the user.
 * **Appointment Booking:**
     * Guides the user to select a specific available slot.
-    * Prompts the user for their name if not already provided in the conversation.
-    * Saves the confirmed appointment to the SQLite database, preventing double booking.
-* **Edit Appointments:**
-    * Allows the user to edit exisiting appointment, checking for available slots.
+    * Prompts the user for their name and email.
+    * Saves the confirmed appointment (with fixed duration) to the SQLite database, preventing double booking.
+* **List Appointments:** Retrieve a client's scheduled appointments by name.
+* **Edit Appointments:** Reschedule an existing appointment to a new, available time slot (maintains original duration).
+* **Provide Professional Information:** Offers details on services, prices (if configured), contact info, etc., via a dedicated tool reading from `professional_info.json`.
 * **LLM Integration:** Supports using different Language Models:
     * OpenAI models (e.g., GPT-4o-mini) via API.
     * Local models via Ollama (e.g., Llama 3).
 * **(Optional) Email Notifications:**
-    * Sends a confirmation email to the professional upon successful booking.
-    * Attaches an `.ics` calendar invite file for easy addition to calendars (like Google Calendar, Outlook).
+    * Sends a confirmation email to the professional (and optionally client) upon successful booking or editing.
+    * Attaches an `.ics` calendar invite file for easy addition to calendars.
     * Requires SMTP configuration in the `.env` file to function.
+* **Admin Panel (View Only):** A simple web interface built with Streamlit for the professional to view the daily appointment schedule.
 
 ## Technology Stack
 
@@ -37,6 +40,7 @@ A conversational AI agent built with LangChain that allows users to book appoint
 * **Calendar Invites:** `ics` library for generating `.ics` files.
 * **Email:** `smtplib` (Python built-in) for sending notifications.
 * **Configuration:** `python-dotenv` for managing environment variables.
+* **Admin Panel:** `streamlit`, `pandas` for the web interface.
 
 ## Prerequisites
 
@@ -44,7 +48,7 @@ A conversational AI agent built with LangChain that allows users to book appoint
 * **Telegram Account:** Needed to create a bot and interact with it.
 * **(Optional) Ollama:** If you want to use local models, install Ollama and pull a model:
     * [Install Ollama](https://ollama.com/)
-    * Run `ollama pull llama3` (or another model of your choice) in your terminal. Ensure Ollama is running (`ollama serve`).
+    * Run `ollama pull llama3` (or another model) in your terminal. Ensure Ollama is running (`ollama serve`).
 * **(Optional) OpenAI API Key:** If you want to use OpenAI models. [Get an API key](https://platform.openai.com/api-keys).
 * **(Optional) Dedicated Email Account:** Strongly recommended for sending notifications (e.g., a new Gmail account). See Configuration section for details on App Passwords.
 
@@ -54,14 +58,14 @@ A conversational AI agent built with LangChain that allows users to book appoint
     ```bash
     # If you have it in a git repository:
     git clone <your-repo-url>
-    cd appointment-agent-demo
+    cd <your-project-directory> # e.g., cd AppointMate
     # Otherwise, navigate to the directory where you saved the project files.
     ```
 
 2.  **Create and Activate a Virtual Environment:**
     ```bash
     # Create venv
-    python -m venv venv
+    python -m venv venv # Or your preferred venv name
 
     # Activate venv
     # On macOS/Linux:
@@ -71,26 +75,28 @@ A conversational AI agent built with LangChain that allows users to book appoint
     ```
 
 3.  **Install Dependencies:**
+    *(Ensure `requirements.txt` includes `streamlit` and `pandas`)*
     ```bash
     pip install -r requirements.txt
     ```
 
 4.  **Create a Telegram Bot:**
     * Open Telegram and search for `BotFather`.
-    * Send `/newbot` and follow the instructions to choose a name and username (ending in `bot`).
-    * **Copy the HTTP API token** provided by BotFather. You'll need it for the configuration.
+    * Send `/newbot` and follow instructions to choose a name and username (ending in `bot`).
+    * **Copy the HTTP API token**.
 
 5.  **Configure Environment Variables:**
-    * Make a copy of the `.env.example` file (if provided) or create a new file named `.env` in the project's root directory (`appointment_agent_demo/`).
-    * **Add `.env` to your `.gitignore` file** to avoid committing secrets.
-    * Edit the `.env` file and fill in the required values (see Configuration section below).
+    * Create a file named `.env` in the project's root directory.
+    * **Add `.env` to your `.gitignore` file.**
+    * Edit `.env` and fill in the required values (see Configuration section below).
 
-6. **Add Professional Info in .json**
-    * Create a `professional_info.json` with the right information as shown in the example.
+6.  **Create Professional Info File:**
+    * Create a file named `professional_info.json` in the project's root directory.
+    * Populate it with the professional's details, services, etc. (Refer to examples in previous discussions for structure). This file is used by the `get_professional_info` tool.
 
 ## Configuration (`.env` file)
 
-Create a `.env` file in the project root with the following variables. Fill them according to your setup:
+Create a `.env` file in the project root with the following variables:
 
 ```dotenv
 # --- Telegram ---
@@ -108,10 +114,10 @@ OPENAI_MODEL_NAME="gpt-4o-mini"                   # Or another OpenAI model like
 OLLAMA_BASE_URL="http://localhost:11434"          # Default Ollama API URL
 OLLAMA_MODEL="llama3"                             # Model name you pulled with Ollama (e.g., llama3, mistral)
 
-# --- Professional & Email Settings ---
+# --- Professional & Appointment Settings ---
 PROFESSIONAL_EMAIL="professional_recipient@example.com" # Professional's email for notifications
-PROFESSIONAL_NAME="Dr. Demo"                          # Name used in email greeting
-APPOINTMENT_DURATION_MINUTES=60                     # Default duration for appointments
+PROFESSIONAL_NAME="Dr. Demo"                          # Name used in email greeting & prompts
+APPOINTMENT_DURATION_MINUTES=60                     # Default FIXED duration for appointments (since varying duration is not implemented)
 
 # --- SMTP Settings (Required ONLY for sending email notifications) ---
 # Strongly recommend using a dedicated email account (e.g., Gmail) and an App Password
