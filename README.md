@@ -29,7 +29,7 @@ A conversational AI agent built with LangChain that allows users to book appoint
 
 ## Technology Stack
 
-* **Python 3.8+**
+* **Python 3.10+**
 * **LangChain:** Core framework for building the agent, managing prompts, tools, and memory.
 * **LLMs:**
     * `langchain-openai` for OpenAI models.
