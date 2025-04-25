@@ -44,7 +44,7 @@ A conversational AI agent built with LangChain that allows users to book appoint
 
 ## Prerequisites
 
-* **Python 3.8 or higher:** [Install Python](https://www.python.org/downloads/)
+* **Python 3.10 or higher:** [Install Python](https://www.python.org/downloads/)
 * **Telegram Account:** Needed to create a bot and interact with it.
 * **(Optional) Ollama:** If you want to use local models, install Ollama and pull a model:
     * [Install Ollama](https://ollama.com/)
@@ -75,7 +75,6 @@ A conversational AI agent built with LangChain that allows users to book appoint
     ```
 
 3.  **Install Dependencies:**
-    *(Ensure `requirements.txt` includes `streamlit` and `pandas`)*
     ```bash
     pip install -r requirements.txt
     ```
