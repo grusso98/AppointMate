@@ -8,11 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from llm_setup import get_llm
 from tools import \
     tools  # The list of exposed tools (check_availability, book_appointment, list_appointments, get_professional_info)
-
-# Define the prompt template for the OpenAI Tools Agent (remains the same)
-# This prompt structure is specific to how create_openai_tools_agent works.
-prompt_openai = ChatPromptTemplate.from_messages([
-    ("system", """
+_BASE_PROMPT = """
     You are 'AppointmentBot', a friendly and efficient assistant for booking appointments. Your goal is to help users find and book available time slots or retrieve information based on their requests.
 
     Key Objectives:
@@ -49,7 +45,10 @@ prompt_openai = ChatPromptTemplate.from_messages([
     - Do not make up information. Rely only on the tools provided and these instructions.
     - Ensure you have all required information before calling a tool.
     """
-    ),
+# Define the prompt template for the OpenAI Tools Agent (remains the same)
+# This prompt structure is specific to how create_openai_tools_agent works.
+prompt_openai = ChatPromptTemplate.from_messages([
+    ("system", _BASE_PROMPT),
     MessagesPlaceholder(variable_name="chat_history"),
     ("user", "{input}"),
     # 'agent_scratchpad' for OpenAI tools agent stores intermediate steps like function calls/responses
