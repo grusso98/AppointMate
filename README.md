@@ -6,6 +6,7 @@ A conversational AI agent built with LangChain that allows users to book appoint
 ## Functionalities
 
 * **Conversational Interface:** Interacts with users naturally through Telegram.
+![Telegram Chat](./imgs/telegram_chat.png)
 * **Availability Checking:**
     * Understands natural language date queries (e.g., "today", "tomorrow", "next Friday", "July 10th") using `dateparser`.
     * Consults an SQLite database for existing appointments.
@@ -26,6 +27,7 @@ A conversational AI agent built with LangChain that allows users to book appoint
     * Attaches an `.ics` calendar invite file for easy addition to calendars.
     * Requires SMTP configuration in the `.env` file to function.
 * **Admin Panel (View Only):** A simple web interface built with Streamlit for the professional to view the daily appointment schedule.
+![Admin Panel](./imgs/admin_panel.png)
 
 ## Technology Stack
 
@@ -102,21 +104,29 @@ Create a `.env` file in the project root with the following variables:
 TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN_HERE" # Paste the token from BotFather
 
 # --- LLM Configuration ---
-MODEL_PROVIDER="openai" # Change to "ollama" to use a local model via Ollama
+MODEL_PROVIDER="openai" 
+# Change to "ollama" to use a local model via Ollama
 # MODEL_PROVIDER="ollama"
 
 # --- OpenAI Settings (Required if MODEL_PROVIDER="openai") ---
-OPENAI_API_KEY="sk-YOUR_OPENAI_API_KEY_HERE"       # Your OpenAI secret key
-OPENAI_MODEL_NAME="gpt-4o-mini"                   # Or another OpenAI model like "gpt-4"
+OPENAI_API_KEY="sk-YOUR_OPENAI_API_KEY_HERE"       
+# Your OpenAI secret key
+OPENAI_MODEL_NAME="gpt-4o-mini"                   
+# Or another OpenAI model like "gpt-4"
 
 # --- Ollama Settings (Required if MODEL_PROVIDER="ollama") ---
-OLLAMA_BASE_URL="http://localhost:11434"          # Default Ollama API URL
-OLLAMA_MODEL="llama3"                             # Model name you pulled with Ollama (e.g., llama3, mistral)
+OLLAMA_BASE_URL="http://localhost:11434"          
+# Default Ollama API URL
+OLLAMA_MODEL="llama3"                             
+Model name you pulled with Ollama (e.g., llama3, mistral)
 
 # --- Professional & Appointment Settings ---
-PROFESSIONAL_EMAIL="professional_recipient@example.com" # Professional's email for notifications
-PROFESSIONAL_NAME="Dr. Demo"                          # Name used in email greeting & prompts
-APPOINTMENT_DURATION_MINUTES=60                     # Default FIXED duration for appointments (since varying duration is not implemented)
+PROFESSIONAL_EMAIL="professional_recipient@example.com" 
+# Professional's email for notifications
+PROFESSIONAL_NAME="Dr. Demo"                          
+# Name used in email greeting & prompts
+APPOINTMENT_DURATION_MINUTES=60                     
+# Default FIXED duration for appointments (since varying duration is not implemented)
 
 # --- SMTP Settings (Required ONLY for sending email notifications) ---
 # Strongly recommend using a dedicated email account (e.g., Gmail) and an App Password
