@@ -18,7 +18,7 @@ def get_llm():
         print(f"Using Ollama model: {OLLAMA_MODEL} at {OLLAMA_BASE_URL}")
         # Ensure Ollama server is running
         try:
-            llm = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL)
+            llm = ChatOllama(model=OLLAMA_MODEL, temperature=0.2, base_url=OLLAMA_BASE_URL)
             # Test connection - Ollama doesn't have a simple ping,
             # invoking might be too slow here. Assume it's running.
             print("Ollama connection assumed successful (no direct ping).")
@@ -31,7 +31,7 @@ def get_llm():
              raise ValueError("OPENAI_API_KEY is not set or invalid in .env file.")
         print(f"Using OpenAI model: {OPENAI_MODEL_NAME}")
         try:
-            llm = ChatOpenAI(model=OPENAI_MODEL_NAME, temperature=0.7, api_key=OPENAI_API_KEY)
+            llm = ChatOpenAI(model=OPENAI_MODEL_NAME, temperature=0.2, api_key=OPENAI_API_KEY)
             # Add a simple test invocation if needed, e.g., llm.invoke("test")
             print("OpenAI LLM initialized.")
             return llm
