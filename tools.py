@@ -30,7 +30,8 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 def get_datetime():
     """
     Checks the current date and time, use it whenever it is useful to know what date is today, 
-    e.g to schedule appointments or to reschedule them and also at startup before handling the client's requests.
+    e.g to schedule appointments or to reschedule them.
+    **Use at startup before handling the client's requests**.
     """
     return str(datetime.today())
 
@@ -100,9 +101,25 @@ def check_availability(date_query: str) -> str:
 @tool
 def book_appointment(datetime_str: str, client_name: str, client_email: str) -> str:
     """
-    Books an appointment for the client at the specified date and time.
-    Requires the exact datetime string in 'YYYY-MM-DD HH:MM' format (as provided by check_availability)
-    and the client's name. Confirms the booking and triggers a notification email.
+    Books a client appointment for a specific date and time.
+
+    This tool requires the following exact information to successfully book the appointment:
+
+    Args:
+        datetime_str (str): The precise date and time for the appointment
+                            in 'YYYY-MM-DD HH:MM' format. This format MUST match
+                            the available time slot string provided previously
+                            by the 'check_availability' tool.
+                            Example: '2025-05-01 14:00'
+
+        client_name (str): The full name of the client booking the appointment.
+                           Example: 'Alice Smith'
+
+        client_email (str): The email address of the client.
+                            Example: 'alice.smith@example.com'
+
+    After a successful booking, the tool confirms the appointment and triggers
+    an automated notification email to the client.
     """
     print(f"Tool: Attempting to book appointment for '{client_name}' at '{datetime_str}'")
     if not client_name or client_name.strip() == "":
